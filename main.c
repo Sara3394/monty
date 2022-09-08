@@ -1,80 +1,47 @@
 #include "monty.h"
-data_t datas = {NULL, NULL};
+
+/* global struct to hold flag for queue and stack length */
+var_t var;
+
 /**
-*main - main function for monty interpreter
-*@argc: argumnets  conuter
-*@argv: arguments char
-*Return: 0 on success
-*/
-int main(int argc, char **argv)
+ * main - Monty bytecode interpreter
+ * @argc: number of arguments passed
+ * @argv: array of argument strings
+ *
+ * Return: EXIT_SUCCESS on success or EXIT_FAILURE on failure
+ */
+int main(int argc, char *argv[])
 {
-void (*temp)(stack_t **, unsigned int);
-unsigned int line_number = 0;
-char buf[BUFSIZ], *token;
-if (argc != 2)
-{
-fprintf(stderr, "USAGE: monty file\n");
-exit(EXIT_FAILURE);
-}
-datas.file = fopen(argv[1], "r");
-if (datas.file == NULL)
-{
-fprintf(stderr, "Error: Can't open file %s\n", argv[1]);
-exit(EXIT_FAILURE);
-}
-while (fgets(buf, BUFSIZ, datas.file))
-{
-line_number++;
-token = strtok(buf, " \t\n\r");
-if (token == NULL)
-continue;
-if (token[0] == '#')
-continue;
-temp = opr(token);
-if (!temp)
-{
-fprintf(stderr, "L%d: unknown instruction %s\n", line_number, token);
-free_memo(datas.list);
-fclose(datas.file);
-exit(EXIT_FAILURE);
-}
-temp(&datas.list, line_number);
-}
-free_memo(datas.list);
-fclose(datas.file);
-return (0);
-}
-/**
-*opr - choose functions if exist
-*@f1: function name
-*Return: Nothing
-*/
-void (*opr(char *f1))(stack_t **head, unsigned int line_number)
-{
-instruction_t ops[] = {
-{"push", push},
-{"pall", pall},
-{"pint", pint},
-{"pop", pop},
-{"swap", swap},
-{"add", addstack},
-{"nop", nop},
-{"sub", sub},
-{"mul", mul},
-{"div", divs},
-{"mod", mods},
-{"pchar", pchars},
-{"pstr", pstrs},
-{"rotl", rotls},
-{"rotr", rotrs},
-{NULL, NULL}
-};
-int i = 0;
-while (ops[i].opcode)
-{
-if (strcmp(f1, ops[i].opcode) == 0)
-break;
-i++;
-}
-return (ops[i].f);
+	stack_t *stack = NULL;
+	unsigned int line_number = 0;
+	FILE *fs = NULL;
+	char *lineptr = NULL, *op = NULL;
+	size_t n = 0;
+
+	var.queue = 0;
+	var.stack_len = 0;
+	if (argc != 2)
+	{
+		dprintf(STDOUT_FILENO, "USAGE: monty file\n");
+		exit(EXIT_FAILURE);
+	}
+	fs = fopen(argv[1], "r");
+	if (fs == NULL)
+	{
+		dprintf(STDOUT_FILENO, "Error: Can't open file %s\n", argv[1]);
+		exit(EXIT_FAILURE);
+	}
+	on_exit(free_lineptr, &lineptr);
+	on_exit(free_stack, &stack);
+	on_exit(m_fs_close, fs);
+	while (getline(&lineptr, &n, fs) != -1)
+	{
+		line_number++;
+		op = strtok(lineptr, "\n\t\r ");
+		if (op != NULL && op[0] != '#')
+		{
+			get_op(op, &stack, line_number);
+		}
+	}
+	exit(EXIT_SUCCESS);
 }
