@@ -1,136 +1,80 @@
 #include "monty.h"
-
+data_t datas = {NULL, NULL};
 /**
- * _push - pushes an element to the stack
- *
- * @doubly: head of the linked list
- * @cline: line number
- * Return: no return
- */
-void _push(stack_t **doubly, unsigned int cline)
+*main - main function for monty interpreter
+*@argc: argumnets  conuter
+*@argv: arguments char
+*Return: 0 on success
+*/
+int main(int argc, char **argv)
 {
-	int n, j;
-
-	if (!vglo.arg)
-	{
-		dprintf(2, "L%u: ", cline);
-		dprintf(2, "usage: push integer\n");
-		free_vglo();
-		exit(EXIT_FAILURE);
-	}
-
-	for (j = 0; vglo.arg[j] != '\0'; j++)
-	{
-		if (!isdigit(vglo.arg[j]) && vglo.arg[j] != '-')
-		{
-			dprintf(2, "L%u: ", cline);
-			dprintf(2, "usage: push integer\n");
-			free_vglo();
-			exit(EXIT_FAILURE);
-		}
-	}
-
-	n = atoi(vglo.arg);
-
-	if (vglo.lifo == 1)
-		add_dnodeint(doubly, n);
-	else
-		add_dnodeint_end(doubly, n);
+void (*temp)(stack_t **, unsigned int);
+unsigned int line_number = 0;
+char buf[BUFSIZ], *token;
+if (argc != 2)
+{
+fprintf(stderr, "USAGE: monty file\n");
+exit(EXIT_FAILURE);
 }
-
-/**
- * _pall - prints all values on the stack
- *
- * @doubly: head of the linked list
- * @cline: line numbers
- * Return: no return
- */
-void _pall(stack_t **doubly, unsigned int cline)
+datas.file = fopen(argv[1], "r");
+if (datas.file == NULL)
 {
-	stack_t *aux;
-	(void)cline;
-
-	aux = *doubly;
-
-	while (aux)
-	{
-		printf("%d\n", aux->n);
-		aux = aux->next;
-	}
+fprintf(stderr, "Error: Can't open file %s\n", argv[1]);
+exit(EXIT_FAILURE);
 }
-
-/**
- * _pint - prints the value at the top of the stack
- *
- * @doubly: head of the linked list
- * @cline: line number
- * Return: no return
- */
-void _pint(stack_t **doubly, unsigned int cline)
+while (fgets(buf, BUFSIZ, datas.file))
 {
-	(void)cline;
-
-	if (*doubly == NULL)
-	{
-		dprintf(2, "L%u: ", cline);
-		dprintf(2, "can't pint, stack empty\n");
-		free_vglo();
-		exit(EXIT_FAILURE);
-	}
-
-	printf("%d\n", (*doubly)->n);
+line_number++;
+token = strtok(buf, " \t\n\r");
+if (token == NULL)
+continue;
+if (token[0] == '#')
+continue;
+temp = opr(token);
+if (!temp)
+{
+fprintf(stderr, "L%d: unknown instruction %s\n", line_number, token);
+free_memo(datas.list);
+fclose(datas.file);
+exit(EXIT_FAILURE);
 }
-
-/**
- * _pop - removes the top element of the stack
- *
- * @doubly: head of the linked list
- * @cline: line number
- * Return: no return
- */
-void _pop(stack_t **doubly, unsigned int cline)
-{
-	stack_t *aux;
-
-	if (doubly == NULL || *doubly == NULL)
-	{
-		dprintf(2, "L%u: can't pop an empty stack\n", cline);
-		free_vglo();
-		exit(EXIT_FAILURE);
-	}
-	aux = *doubly;
-	*doubly = (*doubly)->next;
-	free(aux);
+temp(&datas.list, line_number);
 }
-
+free_memo(datas.list);
+fclose(datas.file);
+return (0);
+}
 /**
- * _swap - swaps the top two elements of the stack
- *
- * @doubly: head of the linked list
- * @cline: line number
- * Return: no return
- */
-void _swap(stack_t **doubly, unsigned int cline)
+*opr - choose functions if exist
+*@f1: function name
+*Return: Nothing
+*/
+void (*opr(char *f1))(stack_t **head, unsigned int line_number)
 {
-	int m = 0;
-	stack_t *aux = NULL;
-
-	aux = *doubly;
-
-	for (; aux != NULL; aux = aux->next, m++)
-		;
-
-	if (m < 2)
-	{
-		dprintf(2, "L%u: can't swap, stack too short\n", cline);
-		free_vglo();
-		exit(EXIT_FAILURE);
-	}
-
-	aux = *doubly;
-	*doubly = (*doubly)->next;
-	aux->next = (*doubly)->next;
-	aux->prev = *doubly;
-	(*doubly)->next = aux;
-	(*doubly)->prev = NULL;
+instruction_t ops[] = {
+{"push", push},
+{"pall", pall},
+{"pint", pint},
+{"pop", pop},
+{"swap", swap},
+{"add", addstack},
+{"nop", nop},
+{"sub", sub},
+{"mul", mul},
+{"div", divs},
+{"mod", mods},
+{"pchar", pchars},
+{"pstr", pstrs},
+{"rotl", rotls},
+{"rotr", rotrs},
+{NULL, NULL}
+};
+int i = 0;
+while (ops[i].opcode)
+{
+if (strcmp(f1, ops[i].opcode) == 0)
+break;
+i++;
+}
+return (ops[i].f);
 }
