@@ -1,103 +1,136 @@
 #include "monty.h"
 
-global_t vglo;
-
 /**
- * free_vglo - frees the global variables
+ * _push - pushes an element to the stack
  *
+ * @doubly: head of the linked list
+ * @cline: line number
  * Return: no return
  */
-void free_vglo(void)
+void _push(stack_t **doubly, unsigned int cline)
 {
-	free_dlistint(vglo.head);
-	free(vglo.buffer);
-	fclose(vglo.fd);
-}
+	int n, j;
 
-/**
- * start_vglo - initializes the global variables
- *
- * @fd: file descriptor
- * Return: no return
- */
-void start_vglo(FILE *fd)
-{
-	vglo.lifo = 1;
-	vglo.cont = 1;
-	vglo.arg = NULL;
-	vglo.head = NULL;
-	vglo.fd = fd;
-	vglo.buffer = NULL;
-}
-
-/**
- * check_input - checks if the file exists and if the file can
- * be opened
- *
- * @argc: argument count
- * @argv: argument vector
- * Return: file struct
- */
-FILE *check_input(int argc, char *argv[])
-{
-	FILE *fd;
-
-	if (argc == 1 || argc > 2)
+	if (!vglo.arg)
 	{
-		dprintf(2, "USAGE: monty file\n");
+		dprintf(2, "L%u: ", cline);
+		dprintf(2, "usage: push integer\n");
+		free_vglo();
 		exit(EXIT_FAILURE);
 	}
 
-	fd = fopen(argv[1], "r");
-
-	if (fd == NULL)
+	for (j = 0; vglo.arg[j] != '\0'; j++)
 	{
-		dprintf(2, "Error: Can't open file %s\n", argv[1]);
-		exit(EXIT_FAILURE);
-	}
-
-	return (fd);
-}
-
-/**
- * main - Entry point
- *
- * @argc: argument count
- * @argv: argument vector
- * Return: 0 on success
- */
-int main(int argc, char *argv[])
-{
-	void (*f)(stack_t **stack, unsigned int line_number);
-	FILE *fd;
-	size_t size = 256;
-	ssize_t nlines = 0;
-	char *lines[2] = {NULL, NULL};
-
-	fd = check_input(argc, argv);
-	start_vglo(fd);
-	nlines = getline(&vglo.buffer, &size, fd);
-	while (nlines != -1)
-	{
-		lines[0] = _strtoky(vglo.buffer, " \t\n");
-		if (lines[0] && lines[0][0] != '#')
+		if (!isdigit(vglo.arg[j]) && vglo.arg[j] != '-')
 		{
-			f = get_opcodes(lines[0]);
-			if (!f)
-			{
-				dprintf(2, "L%u: ", vglo.cont);
-				dprintf(2, "unknown instruction %s\n", lines[0]);
-				free_vglo();
-				exit(EXIT_FAILURE);
-			}
-			vglo.arg = _strtoky(NULL, " \t\n");
-			f(&vglo.head, vglo.cont);
+			dprintf(2, "L%u: ", cline);
+			dprintf(2, "usage: push integer\n");
+			free_vglo();
+			exit(EXIT_FAILURE);
 		}
-		nlines = getline(&vglo.buffer, &size, fd);
-		vglo.cont++;
 	}
 
-	free_vglo();
+	n = atoi(vglo.arg);
 
-	return (0);
+	if (vglo.lifo == 1)
+		add_dnodeint(doubly, n);
+	else
+		add_dnodeint_end(doubly, n);
+}
+
+/**
+ * _pall - prints all values on the stack
+ *
+ * @doubly: head of the linked list
+ * @cline: line numbers
+ * Return: no return
+ */
+void _pall(stack_t **doubly, unsigned int cline)
+{
+	stack_t *aux;
+	(void)cline;
+
+	aux = *doubly;
+
+	while (aux)
+	{
+		printf("%d\n", aux->n);
+		aux = aux->next;
+	}
+}
+
+/**
+ * _pint - prints the value at the top of the stack
+ *
+ * @doubly: head of the linked list
+ * @cline: line number
+ * Return: no return
+ */
+void _pint(stack_t **doubly, unsigned int cline)
+{
+	(void)cline;
+
+	if (*doubly == NULL)
+	{
+		dprintf(2, "L%u: ", cline);
+		dprintf(2, "can't pint, stack empty\n");
+		free_vglo();
+		exit(EXIT_FAILURE);
+	}
+
+	printf("%d\n", (*doubly)->n);
+}
+
+/**
+ * _pop - removes the top element of the stack
+ *
+ * @doubly: head of the linked list
+ * @cline: line number
+ * Return: no return
+ */
+void _pop(stack_t **doubly, unsigned int cline)
+{
+	stack_t *aux;
+
+	if (doubly == NULL || *doubly == NULL)
+	{
+		dprintf(2, "L%u: can't pop an empty stack\n", cline);
+		free_vglo();
+		exit(EXIT_FAILURE);
+	}
+	aux = *doubly;
+	*doubly = (*doubly)->next;
+	free(aux);
+}
+
+/**
+ * _swap - swaps the top two elements of the stack
+ *
+ * @doubly: head of the linked list
+ * @cline: line number
+ * Return: no return
+ */
+void _swap(stack_t **doubly, unsigned int cline)
+{
+	int m = 0;
+	stack_t *aux = NULL;
+
+	aux = *doubly;
+
+	for (; aux != NULL; aux = aux->next, m++)
+		;
+
+	if (m < 2)
+	{
+		dprintf(2, "L%u: can't swap, stack too short\n", cline);
+		free_vglo();
+		exit(EXIT_FAILURE);
+	}
+
+	aux = *doubly;
+	*doubly = (*doubly)->next;
+	aux->next = (*doubly)->next;
+	aux->prev = *doubly;
+	(*doubly)->next = aux;
+	(*doubly)->prev = NULL;
 }
