@@ -1,68 +1,80 @@
-#ifndef MONTY_H
-#define MONTY_H
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <ctype.h>
-#include <string.h>
+#include "monty.h"
+data_t datas = {NULL, NULL};
 /**
-* struct stack_s - doubly linked list representation of a stack (or queue)
-* @n: integer
-* @prev: points to the previous element of the stack (or queue)
-* @next: points to the next element of the stack (or queue)
-*
-* Description: doubly linked list node structure
-* for stack, queues, LIFO, FIFO
+*main - main function for monty interpreter
+*@argc: argumnets  conuter
+*@argv: arguments char
+*Return: 0 on success
 */
-typedef struct stack_s
+int main(int argc, char **argv)
 {
-int n;
-struct stack_s *prev;
-struct stack_s *next;
-} stack_t;
+void (*temp)(stack_t **, unsigned int);
+unsigned int line_number = 0;
+char buf[BUFSIZ], *token;
+if (argc != 2)
+{
+fprintf(stderr, "USAGE: monty file\n");
+exit(EXIT_FAILURE);
+}
+datas.file = fopen(argv[1], "r");
+if (datas.file == NULL)
+{
+fprintf(stderr, "Error: Can't open file %s\n", argv[1]);
+exit(EXIT_FAILURE);
+}
+while (fgets(buf, BUFSIZ, datas.file))
+{
+line_number++;
+token = strtok(buf, " \t\n\r");
+if (token == NULL)
+continue;
+if (token[0] == '#')
+continue;
+temp = opr(token);
+if (!temp)
+{
+fprintf(stderr, "L%d: unknown instruction %s\n", line_number, token);
+free_memo(datas.list);
+fclose(datas.file);
+exit(EXIT_FAILURE);
+}
+temp(&datas.list, line_number);
+}
+free_memo(datas.list);
+fclose(datas.file);
+return (0);
+}
 /**
-* struct instruction_s - opcode and its function
-* @opcode: the opcode
-* @f: function to handle the opcode
-*
-* Description: opcode and its function
-* for stack, queues, LIFO, FIFO
+*opr - choose functions if exist
+*@f1: function name
+*Return: Nothing
 */
-typedef struct instruction_s
+void (*opr(char *f1))(stack_t **head, unsigned int line_number)
 {
-char *opcode;
-void (*f)(stack_t **stack, unsigned int line_number);
-} instruction_t;
-/**
- *struct data - global usage
- *@file: file discriptor
- *@list: head of the list
- */
-typedef struct data
+instruction_t ops[] = {
+{"push", push},
+{"pall", pall},
+{"pint", pint},
+{"pop", pop},
+{"swap", swap},
+{"add", addstack},
+{"nop", nop},
+{"sub", sub},
+{"mul", mul},
+{"div", divs},
+{"mod", mods},
+{"pchar", pchars},
+{"pstr", pstrs},
+{"rotl", rotls},
+{"rotr", rotrs},
+{NULL, NULL}
+};
+int i = 0;
+while (ops[i].opcode)
 {
-FILE *file;
-stack_t *list;
-} data_t;
-extern data_t datas;
-void free_memo(stack_t *head);
-void (*opr(char *f1))(stack_t **head, unsigned int line_number);
-void push(stack_t **head, unsigned int line_number);
-void pop(stack_t **head, unsigned int line_number);
-void nop(stack_t **head, unsigned int line_number);
-void swap(stack_t **head, unsigned int line_number);
-stack_t *add(stack_t **head, int value);
-void addstack(stack_t **head, unsigned int line_number);
-void rotrs(stack_t **head, unsigned int value);
-void sub(stack_t **head, unsigned int line_number);
-void mul(stack_t **head, unsigned int line_number);
-void divs(stack_t **head, unsigned int line_number);
-stack_t *add_end(stack_t **head, const int n);
-void mods(stack_t **head, unsigned int line_number);
-void pall(stack_t **head, unsigned int line_number);
-void pchars(stack_t **head, unsigned int line_number);
-void pstrs(stack_t **head, unsigned int line_number);
-void pint(stack_t **head, unsigned int line_number);
-void rotls(stack_t **head, unsigned int line_number);
-#endif
+if (strcmp(f1, ops[i].opcode) == 0)
+break;
+i++;
+}
+return (ops[i].f);
+}
